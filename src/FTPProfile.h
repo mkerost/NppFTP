@@ -51,8 +51,12 @@ public:
 	int						SetUsername(const char * username);
 	const char*				GetPassword() const;
 	int						SetPassword(const char * password);
+		
 	bool					GetAskPassword() const;
 	int						SetAskPassword(bool askPassword);
+
+	int						GetNoOp() const;
+	int						SetNoOp(int noop);
 
 	int						GetTimeout() const;
 	int						SetTimeout(int timeout);
@@ -129,6 +133,7 @@ private:
 	bool					m_askPassphrase;
 
 	int						m_timeout;
+	int						m_noop;
 
 	Security_Mode			m_securityMode;
 	Transfer_Mode			m_transferMode;

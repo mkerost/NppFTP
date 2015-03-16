@@ -35,6 +35,7 @@ FTPProfile::FTPProfile() :
 	m_askPassword(false),
 	m_askPassphrase(false),
 	m_timeout(30),
+	m_noop(0),
 	m_securityMode(Mode_FTP),
 	m_transferMode(Mode_Binary),
 	m_connectionMode(Mode_Passive),
@@ -54,6 +55,7 @@ FTPProfile::FTPProfile(const TCHAR * name) :
 	m_askPassword(false),
 	m_askPassphrase(false),
 	m_timeout(30),
+	m_noop(0),
 	m_securityMode(Mode_FTP),
 	m_transferMode(Mode_Binary),
 	m_connectionMode(Mode_Passive),
@@ -75,12 +77,12 @@ FTPProfile::FTPProfile(const TCHAR * name) :
 	m_keyFile = SU::DupString(TEXT(""));
 	m_passphrase = SU::strdup("");
 
-	m_cache->SetEnvironment(m_hostname, m_username);
 }
 
 FTPProfile::FTPProfile(const TCHAR * name, const FTPProfile* other) :
 	m_port(other->m_port),
 	m_timeout(other->m_timeout),
+	m_noop(other->m_noop),
 	m_securityMode(other->m_securityMode),
 	m_transferMode(other->m_transferMode),
 	m_connectionMode(other->m_connectionMode),
@@ -285,6 +287,19 @@ int FTPProfile::SetAskPassword(bool askPassword) {
 	m_askPassword = askPassword;
 	return 0;
 }
+
+int FTPProfile::GetNoOp() const {
+	return m_noop;
+}
+
+int FTPProfile::SetNoOp(int noop) {
+	if (noop < 0)
+		return -1;
+
+	m_noop = noop;
+	return 0;
+}
+
 
 int FTPProfile::GetTimeout() const {
 	return m_timeout;
@@ -522,9 +537,12 @@ Transfer_Mode FTPProfile::GetFileTransferMode(const TCHAR* file) const {
 }
 
 int FTPProfile::GetCacheExternal(const TCHAR* localfile, char* extbuffer, int extbuffersize) const {
-	if (!extbuffer || extbuffersize == 0)
+	if (!extbuffer || extbuffersize == 0) {
+		OutErr("[GetCacheExternal] extbuffer or extbuffersize is zero");	
 		return -1;
+	}
 
+	// should return 0 on success
 	return m_cache->GetExternalPathFromLocal(localfile, extbuffer, extbuffersize);
 }
 
@@ -620,6 +638,8 @@ FTPProfile* FTPProfile::LoadProfile(const TiXmlElement * profileElem) {
 
 		profileElem->Attribute("timeout", &profile->m_timeout);
 
+		profileElem->Attribute("noop", &profile->m_noop);
+
 		//TODO: this is rather risky casting, check if the compiler accepts it
 		profileElem->Attribute("securityMode", (int*)(&profile->m_securityMode));
 		profileElem->Attribute("transferMode", (int*)(&profile->m_transferMode));
@@ -686,7 +706,7 @@ FTPProfile* FTPProfile::LoadProfile(const TiXmlElement * profileElem) {
 		SU::FreeTChar(binstrW);
 
 		profile->Sanitize();
-
+		
 		success = true;
 	} while(false);
 
@@ -715,7 +735,8 @@ TiXmlElement* FTPProfile::SaveProfile() const {
 	profileElem->SetAttribute("askPassword", m_askPassword);
 
 	profileElem->SetAttribute("timeout", m_timeout);
-
+	profileElem->SetAttribute("noop", m_noop);
+	
 	profileElem->SetAttribute("securityMode", m_securityMode);
 	profileElem->SetAttribute("transferMode", m_transferMode);
 	profileElem->SetAttribute("connectionMode", m_connectionMode);
@@ -769,6 +790,10 @@ int FTPProfile::Sanitize() {
 
 	if (m_timeout < 0)
 		m_timeout = 0;
+		
+	if (m_noop < 0) {
+		m_noop = 0;
+	}
 
 	if (m_securityMode < 0 || m_securityMode >= Mode_SecurityMax)
 		m_securityMode = Mode_FTP;

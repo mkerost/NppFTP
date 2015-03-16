@@ -53,6 +53,7 @@ Modification made May 2012:
 
 #include "ut_strop.h"
 
+#include "Output.h"
 
 /***************************************************
 
@@ -2370,6 +2371,7 @@ int CUT_FTPClient::GetDirEntry(int index, CUT_DIRINFO *dirInfo) {
 
     //copy the record, switching from char to _TCHAR for filename
 	CUT_Str::cvtcpy(dirInfo->fileName,MAX_PATH, di->fileName);
+	CUT_Str::cvtcpy(dirInfo->mod,MAX_PATH, di->mod);
     dirInfo->fileSize   = di->fileSize;
     dirInfo->day        = di->day;
     dirInfo->month      = di->month;
@@ -2798,6 +2800,9 @@ void CUT_FTPClient::GetInfoInDOSFormat( CUT_DIRINFOA * di){
     long    value;
 
         //parse and store the directory information
+        
+        // mod info is not present
+        di->mod[0] = '\0';
 
         // Get the file name
         int nSpaces = 0, loop = 0;
@@ -2915,7 +2920,10 @@ void CUT_FTPClient::GetInfoInUNIXFormat( CUT_DIRINFOA * di){
             ++ loop;
     }
 
-
+    //CUT_StrMethods::ParseString(m_szBuf," ", 0, di->mod, sizeof(di->mod));
+      
+    strncpy(di->mod, m_szBuf, 10);
+    
     //directory  attrib
     if(m_szBuf[0]=='d' || m_szBuf[0] =='D')
         di->isDir = TRUE;
@@ -2923,7 +2931,7 @@ void CUT_FTPClient::GetInfoInUNIXFormat( CUT_DIRINFOA * di){
 		di->isDir = 2;	//WARNING: HACK!
     else
         di->isDir = FALSE;
-
+        
     //file size
     di->fileSize = 0;
     CUT_StrMethods::ParseString(m_szBuf," ",4+linksIncluded,&di->fileSize);

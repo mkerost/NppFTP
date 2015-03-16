@@ -75,11 +75,14 @@ FileObject::FileObject(FTPFile * ftpfile) :
 	m_ctime = ftpfile->ctime;
 	m_mtime = ftpfile->mtime;
 	m_atime = ftpfile->atime;
+	
+	m_mod = SU::strdup(ftpfile->mod);
 }
 
 FileObject::~FileObject() {
 	RemoveAllChildren();
 	SU::free(m_path);
+	SU::free(m_mod);	
 	SU::FreeTChar(m_localName);
 }
 
@@ -190,6 +193,10 @@ void * FileObject::GetData() const {
 
 long FileObject::GetSize() const {
 	return m_size;
+}
+
+const char* FileObject::GetMod() const {
+	return m_mod;
 }
 
 FILETIME FileObject::GetCTime() const {

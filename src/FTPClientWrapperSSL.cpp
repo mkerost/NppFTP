@@ -74,6 +74,10 @@ int FTPClientWrapperSSL::SetTimeout(int timeout) {
 	return ret;
 }
 
+DWORD FTPClientWrapperSSL::LastAction() {
+	return m_client.LastAction();
+}
+
 int FTPClientWrapperSSL::Connect() {
 	if (m_connected)
 		return OnReturn(0);
@@ -87,13 +91,23 @@ int FTPClientWrapperSSL::Connect() {
 }
 
 int FTPClientWrapperSSL::Disconnect() {
-	if (!m_connected)
+
+	OutDebug("[NppFTP.SSL] now disconnecting.");
+
+	if (!m_connected) {
+		OutDebug("[NppFTP.SSL] not connected. nothing will be done.");
 		return OnReturn(0);
+	}
 
 	int retcode = m_client.Close();
 
 	m_connected = false;	//just set to disconnected state, ignore errors
-
+	
+	if (retcode == UTE_SUCCESS) {
+		OutDebug("[NppFTP.SSL] successfully disconnected.");	
+	} else {
+		OutDebug("[NppFTP.SSL] failed to disconnect.");
+	}
 	return OnReturn((retcode == UTE_SUCCESS)?0:-1);
 }
 
@@ -164,6 +178,8 @@ int FTPClientWrapperSSL::GetDir(const char * path, FTPFile** files) {
 			strcat(ftpfile.filePath, "/");
 		}
 		strcat(ftpfile.filePath, nameCpy);
+		
+		
 /*
 		char * fullName = nameCpy;
 		if (linkLocation != NULL) {
@@ -182,6 +198,7 @@ int FTPClientWrapperSSL::GetDir(const char * path, FTPFile** files) {
 		}
 */
 
+		strcpy(ftpfile.mod, SU::TCharToUtf8(di.mod));
 
 		ftpfile.fileSize = (long)di.fileSize;
 
@@ -217,6 +234,10 @@ int FTPClientWrapperSSL::Cwd(const char * path) {
 	int retcode = m_client.ChDir(path);
 
 	return OnReturn((retcode == UTE_SUCCESS)?0:-1);
+}
+
+int FTPClientWrapperSSL::NoOp() {
+	return m_client.NoOp();
 }
 
 int FTPClientWrapperSSL::Pwd(char* buf, size_t size) {
@@ -468,6 +489,9 @@ int FtpSSLWrapper::Send(LPCSTR data, int len) {
 	}
 	OutClnt("-> %s", datacpy);
 	delete [] datacpy;
+	
+	
+	m_lastAction = GetTickCount();
 
 	return CUT_WSClient::Send(data, len);
 }
@@ -510,6 +534,14 @@ int FtpSSLWrapper::GetResponseCode(CUT_WSClient *ws,LPSTR string,int maxlen) {
 	}
 
 	return res;
+}
+
+DWORD FtpSSLWrapper::LastAction() {	
+	if (m_lastAction == 0) {
+		return 0;
+	} else {
+		return (DWORD) ((GetTickCount() - m_lastAction) / 1000);
+	}
 }
 
 BOOL FtpSSLWrapper::ReceiveFileStatus(long bytesReceived) {
@@ -555,8 +587,8 @@ int FtpSSLWrapper::OnLoadCertificates(SSL_CTX * ctx) {
 		int ret = X509_STORE_add_cert(x509Store, (X509*)m_certificates->at(i));
 		if (ret == 0) {
 			err = ERR_get_error();
-			OutErr("[FTPS] X509_STORE_add_cert failed (%d): %s.", err, ERR_reason_error_string(err));
-			OutErr("[FTPS] Removing certificate from trusted list.", ret);
+			OutErr("[NppFTP.SSLWrapper] X509_STORE_add_cert failed (%d): %s.", err, ERR_reason_error_string(err));
+			OutErr("[NppFTP.SSLWrapper] Removing certificate from trusted list.", ret);
 			size--;
 			m_certificates->erase(m_certificates->begin()+i);
 			i--;	//assuming i is signed
@@ -567,7 +599,7 @@ int FtpSSLWrapper::OnLoadCertificates(SSL_CTX * ctx) {
 
 int FtpSSLWrapper::OnSSLCertificate(const SSL * ssl, const X509* certificate, int verifyResult) {
 	if (certificate == NULL) {
-		OutErr("[FTPS] No certificate presented by server, aborting connection.");
+		OutErr("[NppFTP.SSLWrapper] No certificate presented by server, aborting connection.");
 		return UTE_ERROR;
 	}
 
@@ -583,10 +615,10 @@ int FtpSSLWrapper::OnSSLCertificate(const SSL * ssl, const X509* certificate, in
 	}
 
 	if (verifyResult == X509_V_OK || previouslyAccepted) {
-		OutMsg("[FTPS] Certificate valid.");
+		OutDebug("[NppFTP.SSLWrapper] Certificate valid.");
 	} else {
 		//X509_error_string(verifyResult);
-		OutErr("[FTPS] Certificate invalid (%d): %s.", verifyResult, X509_verify_cert_error_string(verifyResult));
+		OutErr("[NppFTP.SSLWrapper] Certificate invalid (%d): %s.", verifyResult, X509_verify_cert_error_string(verifyResult));
 
 		//MessageDialog md;
 		//int ret = md.Create(_MainOutputWindow, TEXT("FTP(E)S certificate verification"), TEXT("The certificate is unknown. Do you trust it?"));
@@ -600,14 +632,14 @@ int FtpSSLWrapper::OnSSLCertificate(const SSL * ssl, const X509* certificate, in
 		int ret = MessageBox(_MainOutputWindow, msgBuf, TEXT("FTP(E)S certificate verification"), MB_YESNO | MB_ICONWARNING);
 		SU::FreeTChar(msgBuf);
 		if (ret == IDYES) {
-			OutMsg("[FTPS] Certificate accepted");
+			OutDebug("[NppFTP.SSLWrapper] Certificate accepted");
 
 			if (m_certificates) {
 				SSL_get_peer_certificate(ssl);	//increase reference counter
 				m_certificates->push_back(certificate);
 			}
 		} else {
-			OutMsg("[FTPS] Certificate rejected");
+			OutDebug("[NppFTP.SSLWrapper] Certificate rejected");
 			return UTE_ERROR;
 		}
 	}

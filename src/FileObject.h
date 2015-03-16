@@ -49,7 +49,8 @@ public:
 	virtual const char*		GetName() const;
 	virtual const TCHAR*	GetLocalName() const;
 	virtual const char*		GetPath() const;
-
+	virtual const char*		GetMod() const;
+	
 	virtual int				SetRefresh(bool refresh);
 	virtual bool			GetRefresh() const;
 
@@ -87,6 +88,8 @@ protected:
 	FILETIME				m_ctime;
 	FILETIME				m_mtime;
 	FILETIME				m_atime;
+	
+	char* m_mod;
 };
 
 #endif //FILEOBJECT_H

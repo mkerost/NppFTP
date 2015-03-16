@@ -18,6 +18,7 @@
 
 #include "StdInc.h"
 #include "Treeview.h"
+#include <math.h>
 
 /* Tree view extended styles */
 #if 1
@@ -64,7 +65,7 @@ int Treeview::Create(HWND hParent) {
 
 	HRESULT hres = PF::SetWindowTheme(m_hwnd, L"explorer", NULL);
 	if (hres != E_NOTIMPL) {
-		::SetWindowLongPtr(m_hwnd, GWL_STYLE, WS_CHILD|/*WS_VISIBLE|*/WS_BORDER|TVS_HASBUTTONS|TVS_SHOWSELALWAYS|TVS_LINESATROOT|TVS_TRACKSELECT);
+		::SetWindowLongPtr(m_hwnd, GWL_STYLE, WS_CHILD|/*WS_VISIBLE|*/WS_BORDER|TVS_HASBUTTONS|TVS_SHOWSELALWAYS|TVS_LINESATROOT|TVS_TRACKSELECT|TVS_INFOTIP);
 		SendMessage(m_hwnd, TVM_SETEXTENDEDSTYLE, 0, TVS_EX_FADEINOUTEXPANDOS|TVS_EX_DOUBLEBUFFER|TVS_EX_AUTOHSCROLL);
 	}
 
@@ -192,6 +193,53 @@ HTREEITEM Treeview::OnClick() {
 	}
 
 	return NULL;
+}
+
+int Treeview::OnToolTip(const NMTVGETINFOTIP* nmt) {
+	FileObject * fo = GetItemFileObject(nmt->hItem);
+	
+	if (fo->isDir()) {
+		return 0;
+	}
+	
+  SYSTEMTIME stModUTC, stModLocal;	
+	FILETIME ftModified = fo->GetMTime();
+	FileTimeToSystemTime(&ftModified, &stModUTC);
+  SystemTimeToTzSpecificLocalTime(NULL, &stModUTC, &stModLocal);
+
+	long fsize = fo->GetSize();
+	wchar_t txtSize[15];	
+	if (fsize == 0) {
+		_stprintf(txtSize, 15, TEXT("0"));
+	} else {
+		TCHAR powSizes[4][6] = { TEXT("Bytes"), TEXT("KB"), TEXT("MB"), TEXT("GB") };
+		for (int i = 3; i >= 0; i--) {
+			if (fsize > pow(1024, i)) {
+				_stprintf(txtSize, 200, TEXT("%.1lf %s"), fsize / pow(1024, i), (TCHAR*)powSizes[i]);
+				break;
+			}
+		}
+	}
+	
+	wchar_t txtMod[11];
+	if (strcmp(fo->GetMod(), "") == 0) {
+		_stprintf(txtMod, 15, TEXT(""));
+	} else {
+		_stprintf(txtMod, 15, TEXT("Mod: %s\n"), SU::CharToWChar(fo->GetMod()));	
+	}
+
+	_stprintf(nmt->pszText,
+    TEXT(
+			"Last Modified: %02d/%02d/%d %02d:%02d\n"
+			"Size: %s\n"
+			"%s"
+		),
+    stModLocal.wMonth, stModLocal.wDay, stModLocal.wYear, stModLocal.wHour, stModLocal.wMinute,
+    txtSize,
+    txtMod
+	);
+	
+	return 0;
 }
 
 int Treeview::OnExpanding(const NM_TREEVIEW* nmt) {

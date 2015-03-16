@@ -100,6 +100,7 @@ public:
 // directory infomation linked list - ascii fileName for internal use
 typedef struct CUT_DIRINFOATag{
 	char fileName[MAX_PATH+1];	// file or directory name
+	char          mod[11];
 	long fileSize;				// size of directory or file in bytes
 	int  day;					// the day digit of the file date
 	int  month;					// the month digit of the file date
@@ -113,6 +114,7 @@ typedef struct CUT_DIRINFOATag{
 // _TCHAR for UI
 typedef struct CUT_DIRINFOTag{
 	_TCHAR fileName[MAX_PATH+1];	// file or directory name
+	_TCHAR          mod[11];
 	long fileSize;				// size of directory or file in bytes
 	int  day;					// the day digit of the file date
 	int  month;					// the month digit of the file date

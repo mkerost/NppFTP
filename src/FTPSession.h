@@ -44,8 +44,11 @@ public:
 	const FTPProfile*		GetCurrentProfile();
 
 	int						Connect();
+	
+	void          QueueTimerHandler();
+
 	int						GetDirectory(const char * dir);
-	int                     GetDirectoryHierarchy(const char * dir);
+	int           GetDirectoryHierarchy(const char * dir);
 
 	int						DownloadFileCache(const char * sourcefile);	//return 0 on download, -1 on error, 1 when no cache match was found
 	int						DownloadFile(const char * sourcefile, const TCHAR * target, bool targetIsDir, int code = 1);
@@ -53,6 +56,8 @@ public:
 
 	int						UploadFileCache(const TCHAR * sourcefile);	//return 0 on upload, -1 on error, 1 when no cache match was found
 	int						UploadFile(const TCHAR * sourcefile, const char * target, bool targetIsDir, int code = 1);
+
+	int						NoOp();
 
 	int						MkDir(const char * path);
 	int						RmDir(const char * path);
@@ -66,8 +71,13 @@ public:
 	int						AbortOperation();
 	int						AbortTransfer();
 	int						CancelOperation(QueueOperation * cancelOp);
+	
 private:
 	int						Clear();
+	
+	HANDLE           m_timerHandle;
+	int           m_timerCount;
+	bool					m_timerIsInit;
 
 	FTPProfile*				m_currentProfile;
 	FTPSettings*			m_ftpSettings;
@@ -89,5 +99,6 @@ private:
 
 	vX509*					m_certificates;
 };
+
 
 #endif //FTPSESSION_H
